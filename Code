@@ -1,0 +1,106 @@
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import plotly.graph_objects as go
+from scipy.signal import savgol_filter
+
+# Read EEG data from CSV file
+EEG = pd.read_csv("D:\Downloads\Epileptic Seizure Recognition Data Set.csv")
+
+# Extract the signal and its length
+signal = EEG['X3']
+signal_length = len(signal)
+
+# Plot original EEG signal using Matplotlib
+plt.figure(figsize=(10, 5))
+plt.plot(signal)
+plt.title('Original EEG Signal')
+plt.xlabel('Sample')
+plt.ylabel('Amplitude')
+plt.show()
+
+# Apply Savitzky-Golay filter to smooth the signal
+window_length = 5
+polyorder = 2
+filtered_signal = savgol_filter(signal, window_length, polyorder)
+
+# Plot filtered EEG signal using Matplotlib
+plt.figure(figsize=(10, 5))
+plt.plot(filtered_signal)
+plt.title('Filtered EEG Signal')
+plt.xlabel('Sample')
+plt.ylabel('Amplitude')
+plt.show()
+
+
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.signal import iirnotch, butter, filtfilt
+
+# Assuming you've already loaded the filtered signal
+# Define the sampling frequency (Hz)
+fs = 200.0  
+
+# Define the frequency to be removed from the signal (Hz) and the quality factor
+f0 = 60.0  
+Q = 30.0  
+
+# Design a notch filter
+nyq = 0.5 * fs
+f0 = f0 / nyq
+bw = f0 / Q
+b, a = iirnotch(f0, Q)
+
+# Apply the notch filter to the filtered signal
+filtered_signal_notch = filtfilt(b, a, filtered_signal)
+
+# Define the indices for the desired portion of the signal
+start_index = 38
+end_index = 44
+
+# Slice the filtered signal array to extract the desired portion
+cut_signal = filtered_signal_notch[start_index:end_index+1]  # Add 1 to end_index because slicing is exclusive
+
+# Plot the cut portion of the signal using Matplotlib
+plt.plot(cut_signal)
+plt.title('Cut Portion of EEG Signal (Sample {} to Sample {})'.format(start_index, end_index))
+plt.xlabel('Sample')
+plt.ylabel('Amplitude')
+plt.show()
+
+
+
+cross_correlation = np.correlate(cut_signal, filtered_signal_notch, mode='full')
+
+# Plot the cross-correlation
+lag = np.arange(-len(cut_signal) + 1, len(filtered_signal_notch))
+plt.plot(lag, cross_correlation)
+plt.title('Cross-correlation of Cut Signal with Notch-filtered Signal')
+plt.xlabel('Lag')
+plt.ylabel('Cross-correlation')
+plt.show()
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.signal import iirnotch, butter, filtfilt, find_peaks
+
+normalized_corr = cross_correlation / np.max(cross_correlation)
+
+# Find peaks in the normalized cross-correlation where the value is at least 80% of the max value
+peaks, _ = find_peaks(normalized_corr, height=0.3)
+
+# Plot the cross-correlation
+lag = np.arange(-len(cut_signal) + 1, len(filtered_signal_notch))
+plt.plot(lag, normalized_corr)
+plt.plot(lag[peaks], normalized_corr[peaks], 'r.', markersize=10)
+plt.title('Cross-correlation of Cut Signal with Notch-filtered Signal')
+plt.xlabel('Lag')
+plt.ylabel('Normalized Cross-correlation')
+plt.show()
+
